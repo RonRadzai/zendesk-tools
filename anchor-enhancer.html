@@ -38,31 +38,40 @@
   <textarea id="output" readonly></textarea>
 
   <script>
-    function processHtml() {
-      const input = document.getElementById('input').value;
-      const headingRegex = /<(h[1-6])([^>]*)>([\s\S]*?)<\/\1>/gi;
+  function processHtml() {
+    let input = document.getElementById('input').value;
 
-      const processed = input.replace(headingRegex, (match, tag, attrs, content) => {
-        const text = content.replace(/<[^>]+>/g, '').trim();
+    const headingRegex = /<(h[1-6])([^>]*)>([\s\S]*?)<\/\1>/gi;
 
-        let slug = text.toLowerCase()
-          .replace(/[^\w\s-]/g, '')
-          .replace(/\s+/g, '-')
-          .replace(/-+/g, '-')
-          .replace(/^[-\s]+|[-\s]+$/g, '');
+    // Go through the HTML and insert anchors
+    const processed = input.replace(headingRegex, (match, tag, attrs, content, offset) => {
+      const text = content.replace(/<[^>]+>/g, '').trim();
+      if (!text) return match;
 
-        if (!slug) return match;
+      // Create slug from heading text
+      const slug = text.toLowerCase()
+        .replace(/[^\w\s-]/g, '')
+        .replace(/\s+/g, '-')
+        .replace(/-+/g, '-')
+        .replace(/^[-\s]+|[-\s]+$/g, '');
 
-        // Skip if a name anchor already exists right before this heading
-        const anchorPattern = new RegExp(`<a[^>]*(name|id)=["']${slug}["'][^>]*>`, 'i');
-        if (anchorPattern.test(input)) return match;
+      if (!slug) return match;
 
-        const anchorTag = `<a name="${slug}" id="${slug}"></a>`;
-        return `${anchorTag}\n<${tag}${attrs}>${content}</${tag}>`;
-      });
+      // Look directly before this heading for an existing anchor with same slug
+      const beforeMatch = input.slice(0, offset);
+      const lastAnchorRegex = new RegExp(`<a[^>]+(?:name|id)=["']${slug}["'][^>]*>\\s*<\/a>\\s*$`, 'i');
 
-      document.getElementById('output').value = processed;
-    }
-  </script>
+      if (lastAnchorRegex.test(beforeMatch)) {
+        return match; // Don't insert duplicate anchor
+      }
+
+      const anchor = `<a name="${slug}" id="${slug}"></a>\n`;
+      return anchor + match;
+    });
+
+    document.getElementById('output').value = processed;
+  }
+</script>
+
 </body>
 </html>
