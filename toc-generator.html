@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Zendesk TOC Generator</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 2rem;
+      background: #f9f9f9;
+    }
+    textarea {
+      width: 100%;
+      height: 300px;
+      margin-bottom: 1rem;
+      font-family: monospace;
+    }
+    button {
+      padding: 0.5rem 1rem;
+      font-size: 1rem;
+      cursor: pointer;
+    }
+    label {
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <h1>Zendesk TOC Generator</h1>
+  <p>Paste your article HTML below. This tool will add clean anchor tags to each heading and generate a flat TOC using Zendesk-friendly format.</p>
+
+  <label for="input">Original HTML:</label>
+  <textarea id="input" placeholder="Paste your Zendesk article HTML here..."></textarea>
+  <button onclick="processHtml()">Generate TOC & Fix Anchors</button>
+
+  <label for="output">Modified HTML with TOC:</label>
+  <textarea id="output" readonly></textarea>
+
+  <script>
+    function processHtml() {
+      let input = document.getElementById('input').value;
+      let headings = [];
+      const headingRegex = /<(h[1-6])([^>]*)>([\s\S]*?)<\/\1>/gi;
+
+      // Step 1: Add anchor tags inside each heading
+      input = input.replace(headingRegex, (match, tag, attrs, content) => {
+        const textOnly = content.replace(/<[^>]+>/g, '').trim();
+        let slug = textOnly.toLowerCase()
+          .replace(/[^\w\s-]/g, '')
+          .replace(/\s+/g, '-')
+          .replace(/-+/g, '-')
+          .replace(/^[-\s]+|[-\s]+$/g, '');
+
+        if (!slug) return match;
+        if (content.includes(`name="${slug}"`) || content.includes(`id="${slug}"`)) return match;
+
+        headings.push({ slug, text: textOnly });
+        const anchor = `<a name="${slug}" id="${slug}"></a>`;
+        return `<${tag}${attrs}>${anchor}${content}</${tag}>`;
+      });
+
+      // Step 2: Generate flat TOC
+      const tocLines = headings.map(h => `<p><a href="#${h.slug}">${h.text}</a></p>`).join('\n');
+
+      // Step 3: Inject TOC at the top
+      const bodyStart = input.indexOf('<body>');
+      if (bodyStart !== -1) {
+        const insertPos = bodyStart + 6;
+        input = input.slice(0, insertPos) + '\n\n<!-- TOC START -->\n' + tocLines + '\n<!-- TOC END -->\n\n' + input.slice(insertPos);
+      } else {
+        input = tocLines + '\n\n' + input;
+      }
+
+      document.getElementById('output').value = input;
+    }
+  </script>
+</body>
+</html>
