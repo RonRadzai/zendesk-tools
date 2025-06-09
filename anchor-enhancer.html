@@ -40,32 +40,21 @@
   <script>
     function processHtml() {
       const input = document.getElementById('input').value;
-
-      // Regex to match headings
       const headingRegex = /<(h[1-6])([^>]*)>(.*?)<\/\1>/gi;
 
       const processed = input.replace(headingRegex, (match, tag, attrs, content) => {
-        const slug = content.trim().toLowerCase()
-          .replace(/[^\\w\s-]/g, '')
+        const text = content.replace(/<[^>]+>/g, '').trim();
+        let slug = text.toLowerCase()
+          .replace(/[^\w\s-]/g, '')
           .replace(/\s+/g, '-')
-          .replace(/-+/g, '-');
+          .replace(/-+/g, '-')
+          .replace(/^[-\s]+|[-\s]+$/g, '');
 
-        // Check if the previous line already contains an anchor with matching name/id
-        const lines = input.split('\n');
-        const idx = lines.findIndex(line => line.includes(match));
-        if (idx > 0) {
-          const prevLine = lines[idx - 1];
-          if (/<(a)[^>]*(name|id)=["']?\b"?${slug}\b["']?[^>]*><\/a>/i.test(prevLine)) {
-            return match; // Already has anchor above
-          }
-        }
+        if (!slug) return match;
 
-        // Check if heading already has matching id or name
-        if (attrs.includes(`id=\"${slug}\"`) || attrs.includes(`name=\"${slug}\"`)) {
-          return match;
-        }
+        const anchorTag = `<a name="${slug}" id="${slug}"></a>`;
 
-        return `<a name="${slug}" id="${slug}"></a>\n<${tag}${attrs}>${content}</${tag}>`;
+        return `${anchorTag}\n<${tag}${attrs}>${content}</${tag}>`;
       });
 
       document.getElementById('output').value = processed;
