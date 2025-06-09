@@ -8,15 +8,14 @@
     body {
       font-family: Arial, sans-serif;
       padding: 2rem;
-      background: #f9f9f9;
-      max-width: 960px;
-      margin: auto;
+      background-color: #f9f9f9;
     }
     textarea {
       width: 100%;
       height: 300px;
-      font-family: monospace;
       margin-bottom: 1rem;
+      font-family: monospace;
+      padding: 0.5rem;
     }
     button {
       padding: 0.5rem 1rem;
@@ -30,49 +29,39 @@
 </head>
 <body>
   <h1>Zendesk HTML Cleanup Tool</h1>
-  <p>Paste your Zendesk article HTML below. This tool cleans up spacing, font styling, and common artifacts from Salesforce-to-Zendesk migrations.</p>
+  <p>Paste messy HTML from migrated Zendesk articles. This tool will clean up spacing, redundant tags, and formatting issues.</p>
 
   <label for="input">Original HTML:</label>
-  <textarea id="input" placeholder="Paste your raw Zendesk HTML here..."></textarea>
-  <button onclick="cleanHtml()">Clean It Up</button>
+  <textarea id="input" placeholder="Paste your Zendesk article HTML here..."></textarea>
+  <button onclick="cleanHTML()">Clean Up HTML</button>
 
   <label for="output">Cleaned HTML:</label>
   <textarea id="output" readonly></textarea>
 
   <script>
-    function cleanHtml() {
+    function cleanHTML() {
       let html = document.getElementById('input').value;
 
-      // Remove empty paragraphs
-      html = html.replace(/<p>(&nbsp;|\\s|\\u00a0)*<\\/p>/gi, '');
+      // Remove extra &nbsp; lines and empty <p> tags
+      html = html.replace(/<p>(&nbsp;|\s|<br\s*\/?>)*<\/p>/gi, '');
 
-      // Remove double <br>
-      html = html.replace(/(<br\\s*\\/?>\\s*){2,}/gi, '<br>');
+      // Flatten redundant <p><a>...</a></p> into just <p> or leave untouched
+      html = html.replace(/<p[^>]*>\s*(<a [^>]+>[^<]+<\/a>)\s*<\/p>/gi, '<p>$1</p>');
 
-      // Normalize font face/size from pasted MS Word or Salesforce formatting
-      html = html.replace(/<span[^>]*style="[^"]*(font-family|font-size)[^"]*"[^>]*>(.*?)<\\/span>/gi, '$2');
+      // Remove class="wysiwyg-indent1"
+      html = html.replace(/ class="wysiwyg-indent1"/g, '');
 
-      // Remove inline font-size and font-family styles
-      html = html.replace(/style="[^"]*(font-size|font-family)[^"]*"/gi, '');
+      // Normalize multiple line breaks
+      html = html.replace(/(<br\s*\/?>\s*){2,}/gi, '<br>');
 
-      // Trim whitespace and remove multiple blank lines
-      html = html.replace(/\\s{2,}/g, ' ');
-      html = html.replace(/(\\n\\s*){3,}/g, '\\n\\n');
+      // Fix paragraph spacing after images or lists
+      html = html.replace(/<\/(ul|ol|img)>\s*<p>/gi, '</$1>\n<p>');
 
-      // Normalize <p> spacing
-      html = html.replace(/<p>\\s*<\\/p>/gi, '');
-      html = html.replace(/<p>\\s*/gi, '<p>');
-      html = html.replace(/\\s*<\\/p>/gi, '</p>');
+      // Remove extra spacing at the beginning and end
+      html = html.trim();
 
-      // Convert bold paragraphs that look like section titles into <h3>
-      html = html.replace(/<p>\\s*<strong>([^<]{3,100})<\\/strong>\\s*<\\/p>/gi, '<h3>$1</h3>');
-
-      // Make sure images have alt tags
-      html = html.replace(/<img([^>]*?)>/gi, function (match, attrs) {
-        return match.includes('alt=') ? match : `<img${attrs} alt="">`;
-      });
-
-      document.getElementById('output').value = html.trim();
+      // Output result
+      document.getElementById('output').value = html;
     }
   </script>
 </body>
