@@ -65,6 +65,15 @@ To use:
 <p><a href="#create-a-list">Create a List</a></p>
 <p><a href="#manage-your-list">Manage Your List</a></p>
 ```
+
+## Live Demo
+
+Use the tool directly in your browser:
+
+- [Anchorfixer](https://ronradzai.github.io/zendesk-tools/anchor-fixer.html)
+- [TOC Generator](https://ronradzai.github.io/zendesk-tools/toc-generator.html)
+
+
 ## **License**
 MIT License - free to use and modify.
 
