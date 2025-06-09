@@ -36,7 +36,7 @@ Zendesk generates cryptic heading IDs, making URLs long and unreadable when link
 <h2 id="h_01ABCDEF1234567">Create a List</h2>
 ```
 
-## **After (using Anchorfixer):**
+**After (using Anchorfixer):**
 
 ```html
 <a href="/hc/en-us/articles/1234567890#create-a-list">Create a List</a>
