@@ -67,27 +67,26 @@
     return `<${tag}${attrs}>${anchor}${content}</${tag}>`;
   });
 
-  // Update TOC links
-  const tocLinkRegex = /<a\s+([^>]*?)href="[^"]*?#([^"]*?)"([^>]*)>([\s\S]*?)<\/a>/gi;
-  input = input.replace(tocLinkRegex, (match, pre, oldAnchor, post, linkText) => {
-    const textOnly = linkText.replace(/<[^>]+>/g, '').trim();
-    let baseSlug = textOnly.toLowerCase()
-      .replace(/[^\w\s-]/g, '')
-      .replace(/\s+/g, '-')
-      .replace(/-+/g, '-')
-      .replace(/^[-\s]+|[-\s]+$/g, '');
+  // Extract current article ID from the first matching TOC link
+const articleIdMatch = input.match(/href="\/hc\/en-us\/articles\/(\d+)\#/i);
+const currentArticleId = articleIdMatch ? articleIdMatch[1] : null;
 
-    if (!baseSlug) return match;
+// Rewrite TOC links only if they point to the same article
+const tocLinkRegex = /<a\s+([^>]*?)href="\/hc\/en-us\/articles\/(\d+)#([^"]+)"([^>]*)>([\s\S]*?)<\/a>/gi;
 
-    // Match slug already used in headings
-    let finalSlug = baseSlug;
-    let suffix = 2;
-    while (!usedSlugs[finalSlug] && suffix < 100) {
-      finalSlug = `${baseSlug}-${suffix++}`;
-    }
+input = input.replace(tocLinkRegex, (match, pre, articleId, oldAnchor, post, linkText) => {
+  const textOnly = linkText.replace(/<[^>]+>/g, '').trim();
+  let slug = textOnly.toLowerCase()
+    .replace(/[^\w\s-]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^[-\s]+|[-\s]+$/g, '');
 
-    return `<a ${pre}href="#${finalSlug}"${post}>${linkText}</a>`;
-  });
+  // Only rewrite if link is to the current article
+  if (!slug || articleId !== currentArticleId) return match;
+
+  return `<a ${pre}href="#${slug}"${post}>${linkText}</a>`;
+});
 
   document.getElementById('output').value = input;
 }
