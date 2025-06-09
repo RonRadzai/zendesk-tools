@@ -39,30 +39,32 @@
   <textarea id="output" readonly></textarea>
 
   <script>
-    function cleanHTML() {
-      let html = document.getElementById('input').value;
+  function cleanHTML() {
+    const input = document.getElementById('input').value;
+    let output = input;
 
-      // Remove extra &nbsp; lines and empty <p> tags
-      html = html.replace(/<p>(&nbsp;|\s|<br\s*\/?>)*<\/p>/gi, '');
+    // Remove empty <p> tags and extra &nbsp;
+    output = output.replace(/<p[^>]*>(&nbsp;|\s|<br\s*\/?>)*<\/p>/gi, '');
 
-      // Flatten redundant <p><a>...</a></p> into just <p> or leave untouched
-      html = html.replace(/<p[^>]*>\s*(<a [^>]+>[^<]+<\/a>)\s*<\/p>/gi, '<p>$1</p>');
+    // Remove class="wysiwyg-indent1"
+    output = output.replace(/\sclass="wysiwyg-indent1"/gi, '');
 
-      // Remove class="wysiwyg-indent1"
-      html = html.replace(/ class="wysiwyg-indent1"/g, '');
+    // Collapse multiple <br> tags into a single one
+    output = output.replace(/(<br\s*\/?>\s*){2,}/gi, '<br>');
 
-      // Normalize multiple line breaks
-      html = html.replace(/(<br\s*\/?>\s*){2,}/gi, '<br>');
+    // Clean up <p><a></a></p> blocks (just normalize spacing)
+    output = output.replace(/<p[^>]*>\s*(<a [^>]+>[^<]+<\/a>)\s*<\/p>/gi, '<p>$1</p>');
 
-      // Fix paragraph spacing after images or lists
-      html = html.replace(/<\/(ul|ol|img)>\s*<p>/gi, '</$1>\n<p>');
+    // Normalize space between tags
+    output = output.replace(/>\s+</g, '>\n<');
 
-      // Remove extra spacing at the beginning and end
-      html = html.trim();
+    // Trim leading and trailing whitespace
+    output = output.trim();
 
-      // Output result
-      document.getElementById('output').value = html;
-    }
-  </script>
+    // Show cleaned output
+    document.getElementById('output').value = output;
+  }
+</script>
+
 </body>
 </html>
