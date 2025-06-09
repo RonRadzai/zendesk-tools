@@ -39,42 +39,59 @@
 
   <script>
     function processHtml() {
-      let input = document.getElementById('input').value;
+  let input = document.getElementById('input').value;
+  const usedSlugs = {};
 
-      // Add anchors inside headings
-      const headingRegex = /<(h[1-6])([^>]*)>([\s\S]*?)<\/\1>/gi;
-      input = input.replace(headingRegex, (match, tag, attrs, content) => {
-        const textOnly = content.replace(/<[^>]+>/g, '').trim();
-        let slug = textOnly.toLowerCase()
-          .replace(/[^\w\s-]/g, '')
-          .replace(/\s+/g, '-')
-          .replace(/-+/g, '-')
-          .replace(/^[-\s]+|[-\s]+$/g, '');
+  // Add anchors inside headings
+  const headingRegex = /<(h[1-6])([^>]*)>([\s\S]*?)<\/\1>/gi;
+  input = input.replace(headingRegex, (match, tag, attrs, content) => {
+    const textOnly = content.replace(/<[^>]+>/g, '').trim();
+    let baseSlug = textOnly.toLowerCase()
+      .replace(/[^\w\s-]/g, '')
+      .replace(/\s+/g, '-')
+      .replace(/-+/g, '-')
+      .replace(/^[-\s]+|[-\s]+$/g, '');
 
-        if (!slug) return match;
-        if (content.includes(`name="${slug}"`) || content.includes(`id="${slug}"`)) return match;
+    if (!baseSlug) return match;
 
-        const anchor = `<a name="${slug}" id="${slug}"></a>`;
-        return `<${tag}${attrs}>${anchor}${content}</${tag}>`;
-      });
-
-      // Update TOC links
-      const tocLinkRegex = /<a\s+([^>]*?)href="[^"]*?#([^"]*?)"([^>]*)>([\s\S]*?)<\/a>/gi;
-
-input = input.replace(tocLinkRegex, (match, pre, oldAnchor, post, linkText) => {
-  const textOnly = linkText.replace(/<[^>]+>/g, '').trim();
-  let slug = textOnly.toLowerCase()
-    .replace(/[^\w\s-]/g, '')
-    .replace(/\s+/g, '-')
-    .replace(/-+/g, '-')
-    .replace(/^[-\s]+|[-\s]+$/g, '');
-
-  if (!slug) return match;
-  return `<a ${pre}href="#${slug}"${post}>${linkText}</a>`;
-});
-
-      document.getElementById('output').value = input;
+    let slug = baseSlug;
+    let counter = 2;
+    while (usedSlugs[slug]) {
+      slug = `${baseSlug}-${counter++}`;
     }
+    usedSlugs[slug] = true;
+
+    if (content.includes(`name="${slug}"`) || content.includes(`id="${slug}"`)) return match;
+
+    const anchor = `<a name="${slug}" id="${slug}"></a>`;
+    return `<${tag}${attrs}>${anchor}${content}</${tag}>`;
+  });
+
+  // Update TOC links
+  const tocLinkRegex = /<a\s+([^>]*?)href="[^"]*?#([^"]*?)"([^>]*)>([\s\S]*?)<\/a>/gi;
+  input = input.replace(tocLinkRegex, (match, pre, oldAnchor, post, linkText) => {
+    const textOnly = linkText.replace(/<[^>]+>/g, '').trim();
+    let baseSlug = textOnly.toLowerCase()
+      .replace(/[^\w\s-]/g, '')
+      .replace(/\s+/g, '-')
+      .replace(/-+/g, '-')
+      .replace(/^[-\s]+|[-\s]+$/g, '');
+
+    if (!baseSlug) return match;
+
+    // Match slug already used in headings
+    let finalSlug = baseSlug;
+    let suffix = 2;
+    while (!usedSlugs[finalSlug] && suffix < 100) {
+      finalSlug = `${baseSlug}-${suffix++}`;
+    }
+
+    return `<a ${pre}href="#${finalSlug}"${post}>${linkText}</a>`;
+  });
+
+  document.getElementById('output').value = input;
+}
+
   </script>
 </body>
 </html>
