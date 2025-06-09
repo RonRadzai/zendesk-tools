@@ -43,10 +43,29 @@ Zendesk generates cryptic heading IDs, making URLs long and unreadable when link
 <h2 id="h_01ABCDEF1234567"><a name="create-a-list" id="create-a-list"></a>Create a List</h2>
 ```
 
+
 ## **License**
 MIT License - free to use and modify.
 
 
+## TOC Generator (Bonus Tool)
 
+We also offer a second tool that creates a flat Table of Contents based on your article’s headings. It:
 
+- Follows the same anchor-slug rules as Anchorfixer.
+- Preserves heading order.
+- Outputs Zendesk-style flat TOC using `<p><a href="#...">...</a></p>` format.
+
+To use:
+
+1. Paste your article HTML into `toc-generator.html`.
+2. Click **Generate TOC**.
+3. Copy and paste the TOC into the top of your Zendesk article.
+
+**Example Output:**
+
+```html
+<p><a href="#create-a-list">Create a List</a></p>
+<p><a href="#manage-your-list">Manage Your List</a></p>
+```
 
