@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Zendesk AnchorFixer</title>
+  <title>Zendesk Anchorfixer</title>
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -27,56 +27,54 @@
   </style>
 </head>
 <body>
-  <h1>Zendesk AnchorFixer</h1>
-  <p>Paste the HTML from your Zendesk article below. This tool will insert named anchor tags above each heading for direct linking.</p>
+  <h1>Zendesk Anchorfixer</h1>
+  <p>Paste your Zendesk article HTML below. This tool adds named anchors to headings and updates TOC links to use readable URLs.</p>
 
   <label for="input">Original HTML:</label>
   <textarea id="input" placeholder="Paste your Zendesk article HTML here..."></textarea>
-  <button onclick="processHtml()">Add Anchors</button>
+  <button onclick="processHtml()">Fix Anchors</button>
 
   <label for="output">Modified HTML:</label>
   <textarea id="output" readonly></textarea>
 
- <script>
-  function processHtml() {
-    let input = document.getElementById('input').value;
+  <script>
+    function processHtml() {
+      let input = document.getElementById('input').value;
 
-    // First: Update all headings with anchor inside
-    const headingRegex = /<(h[1-6])([^>]*)>([\s\S]*?)<\/\1>/gi;
-    input = input.replace(headingRegex, (match, tag, attrs, content) => {
-      const textOnly = content.replace(/<[^>]+>/g, '').trim();
-      let slug = textOnly.toLowerCase()
-        .replace(/[^\w\s-]/g, '')
-        .replace(/\s+/g, '-')
-        .replace(/-+/g, '-')
-        .replace(/^[-\s]+|[-\s]+$/g, '');
+      // Add anchors inside headings
+      const headingRegex = /<(h[1-6])([^>]*)>([\s\S]*?)<\/\1>/gi;
+      input = input.replace(headingRegex, (match, tag, attrs, content) => {
+        const textOnly = content.replace(/<[^>]+>/g, '').trim();
+        let slug = textOnly.toLowerCase()
+          .replace(/[^\w\s-]/g, '')
+          .replace(/\s+/g, '-')
+          .replace(/-+/g, '-')
+          .replace(/^[-\s]+|[-\s]+$/g, '');
 
-      if (!slug) return match;
-      if (content.includes(`name="${slug}"`) || content.includes(`id="${slug}"`)) return match;
+        if (!slug) return match;
+        if (content.includes(`name="${slug}"`) || content.includes(`id="${slug}"`)) return match;
 
-      const anchor = `<a name="${slug}" id="${slug}"></a>`;
-      return `<${tag}${attrs}>${anchor}${content}</${tag}>`;
-    });
+        const anchor = `<a name="${slug}" id="${slug}"></a>`;
+        return `<${tag}${attrs}>${anchor}${content}</${tag}>`;
+      });
 
-    // Second: Fix TOC links to point to new anchor names
-    const tocLinkRegex = /<a\s+([^>]*?)href="([^"]*?)#h_[^"]*?"([^>]*)>([\s\S]*?)<\/a>/gi;
-    input = input.replace(tocLinkRegex, (match, pre, baseUrl, post, linkText) => {
-      const textOnly = linkText.replace(/<[^>]+>/g, '').trim();
-      let slug = textOnly.toLowerCase()
-        .replace(/[^\w\s-]/g, '')
-        .replace(/\s+/g, '-')
-        .replace(/-+/g, '-')
-        .replace(/^[-\s]+|[-\s]+$/g, '');
+      // Update TOC links
+      const tocLinkRegex = /<a\s+([^>]*?)href="([^"]*?)#h_[^"]*?"([^>]*)>([\s\S]*?)<\/a>/gi;
+      input = input.replace(tocLinkRegex, (match, pre, baseUrl, post, linkText) => {
+        const textOnly = linkText.replace(/<[^>]+>/g, '').trim();
+        let slug = textOnly.toLowerCase()
+          .replace(/[^\w\s-]/g, '')
+          .replace(/\s+/g, '-')
+          .replace(/-+/g, '-')
+          .replace(/^[-\s]+|[-\s]+$/g, '');
 
-      if (!slug) return match;
+        if (!slug) return match;
 
-      return `<a ${pre}href="${baseUrl}#${slug}"${post}>${linkText}</a>`;
-    });
+        return `<a ${pre}href="${baseUrl}#${slug}"${post}>${linkText}</a>`;
+      });
 
-    document.getElementById('output').value = input;
-  }
-</script>
-
-
+      document.getElementById('output').value = input;
+    }
+  </script>
 </body>
 </html>
