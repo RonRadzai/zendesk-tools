@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Zendesk Heading Anchor Enhancer</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 2rem;
+      background: #f9f9f9;
+    }
+    textarea {
+      width: 100%;
+      height: 300px;
+      margin-bottom: 1rem;
+      font-family: monospace;
+    }
+    button {
+      padding: 0.5rem 1rem;
+      font-size: 1rem;
+      cursor: pointer;
+    }
+    label {
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <h1>Zendesk Heading Anchor Enhancer</h1>
+  <p>Paste the HTML from your Zendesk article below. This tool will insert named anchor tags above each heading for direct linking.</p>
+
+  <label for="input">Original HTML:</label>
+  <textarea id="input" placeholder="Paste your Zendesk article HTML here..."></textarea>
+  <button onclick="processHtml()">Add Anchors</button>
+
+  <label for="output">Modified HTML:</label>
+  <textarea id="output" readonly></textarea>
+
+  <script>
+    function processHtml() {
+      const input = document.getElementById('input').value;
+
+      // Regex to match headings
+      const headingRegex = /<(h[1-6])([^>]*)>(.*?)<\/\1>/gi;
+
+      const processed = input.replace(headingRegex, (match, tag, attrs, content) => {
+        const slug = content.trim().toLowerCase()
+          .replace(/[^\\w\s-]/g, '')
+          .replace(/\s+/g, '-')
+          .replace(/-+/g, '-');
+
+        // Check if the previous line already contains an anchor with matching name/id
+        const lines = input.split('\n');
+        const idx = lines.findIndex(line => line.includes(match));
+        if (idx > 0) {
+          const prevLine = lines[idx - 1];
+          if (/<(a)[^>]*(name|id)=["']?\b"?${slug}\b["']?[^>]*><\/a>/i.test(prevLine)) {
+            return match; // Already has anchor above
+          }
+        }
+
+        // Check if heading already has matching id or name
+        if (attrs.includes(`id=\"${slug}\"`) || attrs.includes(`name=\"${slug}\"`)) {
+          return match;
+        }
+
+        return `<a name="${slug}" id="${slug}"></a>\n<${tag}${attrs}>${content}</${tag}>`;
+      });
+
+      document.getElementById('output').value = processed;
+    }
+  </script>
+</body>
+</html>
