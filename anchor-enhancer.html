@@ -40,10 +40,11 @@
   <script>
     function processHtml() {
       const input = document.getElementById('input').value;
-      const headingRegex = /<(h[1-6])([^>]*)>(.*?)<\/\1>/gi;
+      const headingRegex = /<(h[1-6])([^>]*)>([\s\S]*?)<\/\1>/gi;
 
       const processed = input.replace(headingRegex, (match, tag, attrs, content) => {
         const text = content.replace(/<[^>]+>/g, '').trim();
+
         let slug = text.toLowerCase()
           .replace(/[^\w\s-]/g, '')
           .replace(/\s+/g, '-')
@@ -52,8 +53,11 @@
 
         if (!slug) return match;
 
-        const anchorTag = `<a name="${slug}" id="${slug}"></a>`;
+        // Skip if a name anchor already exists right before this heading
+        const anchorPattern = new RegExp(`<a[^>]*(name|id)=["']${slug}["'][^>]*>`, 'i');
+        if (anchorPattern.test(input)) return match;
 
+        const anchorTag = `<a name="${slug}" id="${slug}"></a>`;
         return `${anchorTag}\n<${tag}${attrs}>${content}</${tag}>`;
       });
 
