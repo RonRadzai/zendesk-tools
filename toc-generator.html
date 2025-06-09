@@ -28,7 +28,7 @@
 </head>
 <body>
   <h1>Zendesk TOC Generator</h1>
-  <p>Paste your article HTML below. This tool will add clean anchor tags to each heading and generate a flat TOC using Zendesk-friendly format.</p>
+  <p>Paste your article HTML below. This tool adds named anchors to headings and generates a flat TOC with clean, readable links.</p>
 
   <label for="input">Original HTML:</label>
   <textarea id="input" placeholder="Paste your Zendesk article HTML here..."></textarea>
@@ -40,36 +40,55 @@
   <script>
     function processHtml() {
       let input = document.getElementById('input').value;
-      let headings = [];
-      const headingRegex = /<(h[1-6])([^>]*)>([\s\S]*?)<\/\1>/gi;
+      const headings = [];
+      const usedSlugs = new Map();
 
-      // Step 1: Add anchor tags inside each heading
+      function getUniqueSlug(base) {
+        let slug = base;
+        let count = 1;
+        while (usedSlugs.has(slug)) {
+          slug = `${base}-${count++}`;
+        }
+        usedSlugs.set(slug, true);
+        return slug;
+      }
+
+      // Step 1: Insert anchor tags and build slug list
+      const headingRegex = /<(h[1-6])([^>]*)>([\s\S]*?)<\/\1>/gi;
       input = input.replace(headingRegex, (match, tag, attrs, content) => {
         const textOnly = content.replace(/<[^>]+>/g, '').trim();
-        let slug = textOnly.toLowerCase()
+        if (!textOnly) return match;
+
+        const baseSlug = textOnly.toLowerCase()
           .replace(/[^\w\s-]/g, '')
           .replace(/\s+/g, '-')
           .replace(/-+/g, '-')
           .replace(/^[-\s]+|[-\s]+$/g, '');
 
-        if (!slug) return match;
-        if (content.includes(`name="${slug}"`) || content.includes(`id="${slug}"`)) return match;
+        const slug = getUniqueSlug(baseSlug);
+        headings.push({ tag, slug, text: textOnly });
 
-        headings.push({ slug, text: textOnly });
+        if (content.includes(`name="${slug}"`) || content.includes(`id="${slug}"`)) {
+          return match;
+        }
+
         const anchor = `<a name="${slug}" id="${slug}"></a>`;
         return `<${tag}${attrs}>${anchor}${content}</${tag}>`;
       });
 
-      // Step 2: Generate flat TOC
-      const tocLines = headings.map(h => `<p><a href="#${h.slug}">${h.text}</a></p>`).join('\n');
+      // Step 2: Generate TOC
+      const tocHtml = headings
+        .map(h => `<p><a href="#${h.slug}">${h.text}</a></p>`)
+        .join('\n');
 
-      // Step 3: Inject TOC at the top
-      const bodyStart = input.indexOf('<body>');
-      if (bodyStart !== -1) {
-        const insertPos = bodyStart + 6;
-        input = input.slice(0, insertPos) + '\n\n<!-- TOC START -->\n' + tocLines + '\n<!-- TOC END -->\n\n' + input.slice(insertPos);
+      // Step 3: Insert TOC at top of HTML
+      const insertMarker = input.search(/<h[1-6][^>]*>/i);
+      if (insertMarker !== -1) {
+        input = input.slice(0, insertMarker)
+          + `\n\n<!-- TOC START -->\n${tocHtml}\n<!-- TOC END -->\n\n`
+          + input.slice(insertMarker);
       } else {
-        input = tocLines + '\n\n' + input;
+        input = `<!-- TOC START -->\n${tocHtml}\n<!-- TOC END -->\n\n` + input;
       }
 
       document.getElementById('output').value = input;
