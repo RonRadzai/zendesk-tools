@@ -44,9 +44,6 @@ Zendesk generates cryptic heading IDs, making URLs long and unreadable when link
 ```
 
 
-## **License**
-MIT License - free to use and modify.
-
 
 ## TOC Generator (Bonus Tool)
 
@@ -68,4 +65,6 @@ To use:
 <p><a href="#create-a-list">Create a List</a></p>
 <p><a href="#manage-your-list">Manage Your List</a></p>
 ```
+## **License**
+MIT License - free to use and modify.
 
