@@ -59,19 +59,19 @@
       });
 
       // Update TOC links
-      const tocLinkRegex = /<a\s+([^>]*?)href="([^"]*?)#h_[^"]*?"([^>]*)>([\s\S]*?)<\/a>/gi;
-      input = input.replace(tocLinkRegex, (match, pre, baseUrl, post, linkText) => {
-        const textOnly = linkText.replace(/<[^>]+>/g, '').trim();
-        let slug = textOnly.toLowerCase()
-          .replace(/[^\w\s-]/g, '')
-          .replace(/\s+/g, '-')
-          .replace(/-+/g, '-')
-          .replace(/^[-\s]+|[-\s]+$/g, '');
+      const tocLinkRegex = /<a\s+([^>]*?)href="[^"]*?#([^"]*?)"([^>]*)>([\s\S]*?)<\/a>/gi;
 
-        if (!slug) return match;
+input = input.replace(tocLinkRegex, (match, pre, oldAnchor, post, linkText) => {
+  const textOnly = linkText.replace(/<[^>]+>/g, '').trim();
+  let slug = textOnly.toLowerCase()
+    .replace(/[^\w\s-]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^[-\s]+|[-\s]+$/g, '');
 
-        return `<a ${pre}href="${baseUrl}#${slug}"${post}>${linkText}</a>`;
-      });
+  if (!slug) return match;
+  return `<a ${pre}href="#${slug}"${post}>${linkText}</a>`;
+});
 
       document.getElementById('output').value = input;
     }
