@@ -21,11 +21,20 @@ Zendesk generates cryptic heading IDs, making URLs long and unreadable when link
 
 ## Features
 
+### Anchorfixer
 - Adds `name` and `id` attributes using slugified heading text.
-- Avoids adding duplicate anchors if one already exists.
-- Updates all TOC links to match the slugified headings.
-- Leaves existing readable anchors untouched.
+- Avoids duplicate anchors if one already exists.
+- Updates internal TOC links to match the new slugs.
+- **Only rewrites links that point to the current article.**
+- Leaves external and cross-article links unchanged.
 - Works entirely client-side—no data is sent anywhere.
+
+### TOC Generator
+- Adds named anchors just like Anchorfixer.
+- Creates a flat Table of Contents using the same slug logic.
+- **Skips TOC creation if one already exists (`<!-- TOC START -->`).**
+- **Also rewrites existing TOC links (if they point to the same article).**
+
 
 ## Example
 
