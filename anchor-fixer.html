@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Zendesk Anchorfixer</title>
   <style>
     body {
@@ -28,7 +28,7 @@
 </head>
 <body>
   <h1>Zendesk Anchorfixer</h1>
-  <p>Paste your Zendesk article HTML below. This tool adds named anchors to headings and updates TOC links to use readable URLs.</p>
+  <p>Paste your Zendesk article HTML below. This tool adds named anchors to headings and updates TOC links to use readable slugs.</p>
 
   <label for="input">Original HTML:</label>
   <textarea id="input" placeholder="Paste your Zendesk article HTML here..."></textarea>
@@ -39,21 +39,23 @@
   <button onclick="copyToClipboard()">Copy Code</button>
 
   <script>
+    function slugify(text) {
+      return text.toLowerCase()
+        .replace(/[^\w\s-]/g, '')
+        .replace(/\s+/g, '-')
+        .replace(/-+/g, '-')
+        .replace(/^[-\s]+|[-\s]+$/g, '');
+    }
+
     function processHtml() {
       let input = document.getElementById('input').value;
       const usedSlugs = {};
-      const knownSlugs = new Set();
-
-      // Step 1: Add anchors inside headings
       const headingRegex = /<(h[1-6])([^>]*)>([\s\S]*?)<\/\1>/gi;
+      const headings = [];
+
       input = input.replace(headingRegex, (match, tag, attrs, content) => {
         const textOnly = content.replace(/<[^>]+>/g, '').trim();
-        let baseSlug = textOnly.toLowerCase()
-          .replace(/[^\w\s-]/g, '')
-          .replace(/\s+/g, '-')
-          .replace(/-+/g, '-')
-          .replace(/^[-\s]+|[-\s]+$/g, '');
-
+        let baseSlug = slugify(textOnly);
         if (!baseSlug) return match;
 
         let slug = baseSlug;
@@ -62,7 +64,7 @@
           slug = `${baseSlug}-${counter++}`;
         }
         usedSlugs[slug] = true;
-        knownSlugs.add(slug);
+        headings.push({ slug, text: textOnly });
 
         if (content.includes(`name="${slug}"`) || content.includes(`id="${slug}"`)) return match;
 
@@ -70,29 +72,23 @@
         return `<${tag}${attrs}>${anchor}${content}</${tag}>`;
       });
 
-      // Step 2: Fix Zendesk TOC links (only same-article links)
+      // Match relative Zendesk links to the same article
       const articleIdMatch = input.match(/href="\/hc\/en-us\/articles\/(\d+)\#/i);
       const currentArticleId = articleIdMatch ? articleIdMatch[1] : null;
 
       const tocLinkRegex = /<a\s+([^>]*?)href="\/hc\/en-us\/articles\/(\d+)#([^"]+)"([^>]*)>([\s\S]*?)<\/a>/gi;
       input = input.replace(tocLinkRegex, (match, pre, articleId, oldAnchor, post, linkText) => {
-        const textOnly = linkText.replace(/<[^>]+>/g, '').trim();
-        let slug = textOnly.toLowerCase()
-          .replace(/[^\w\s-]/g, '')
-          .replace(/\s+/g, '-')
-          .replace(/-+/g, '-')
-          .replace(/^[-\s]+|[-\s]+$/g, '');
-
+        const slug = slugify(linkText.replace(/<[^>]+>/g, '').trim());
         if (!slug || articleId !== currentArticleId) return match;
-
         return `<a ${pre}href="#${slug}"${post}>${linkText}</a>`;
       });
 
-      // Step 3: Fix external links ending in #slug, only if slug matches a known heading
-      const externalWithSlug = /<a\s+([^>]*?)href="https?:\/\/[^"]+#([^"]+)"([^>]*)>([\s\S]*?)<\/a>/gi;
-      input = input.replace(externalWithSlug, (match, pre, externalSlug, post, linkText) => {
-        if (!knownSlugs.has(externalSlug)) return match;
-        return `<a ${pre}href="#${externalSlug}"${post}>${linkText}</a>`;
+      // Match full external links that are actually referencing internal slugs (e.g., Salesforce pasted links)
+      const externalSlugLinkRegex = /<a\s+([^>]*?)href="https:\/\/[^"]+#([^"]+)"([^>]*)>([\s\S]*?)<\/a>/gi;
+      input = input.replace(externalSlugLinkRegex, (match, pre, anchor, post, linkText) => {
+        const textSlug = slugify(linkText.replace(/<[^>]+>/g, '').trim());
+        const matchExists = headings.some(h => h.slug === textSlug);
+        return matchExists ? `<a ${pre}href="#${textSlug}"${post}>${linkText}</a>` : match;
       });
 
       document.getElementById('output').value = input;
