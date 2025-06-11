@@ -47,7 +47,12 @@
       // Add anchors inside headings
       const headingRegex = /<(h[1-6])([^>]*)>([\s\S]*?)<\/\1>/gi;
       input = input.replace(headingRegex, (match, tag, attrs, content) => {
-        const textOnly = content.replace(/<[^>]+>/g, '').trim();
+      const textOnly = content
+          .replace(/<[^>]+>/g, '')   // remove tags
+          .replace(/&nbsp;|\s+/gi, '') // remove &nbsp; and whitespace
+          .trim();
+      if (!textOnly) return match; // skip blank or empty headings
+
         let baseSlug = textOnly.toLowerCase()
           .replace(/[^\w\s-]/g, '')
           .replace(/\s+/g, '-')
