@@ -28,7 +28,7 @@
 </head>
 <body>
   <h1>Zendesk Anchorfixer</h1>
-  <p>Paste your Zendesk article HTML below. This tool adds named anchors to headings and updates TOC links to use readable URLs.</p>
+  <p>Paste your Zendesk article HTML below. This tool adds named anchors to headings and updates TOC links to use readable URLs with the correct article ID path.</p>
 
   <label for="input">Original HTML:</label>
   <textarea id="input" placeholder="Paste your Zendesk article HTML here..."></textarea>
@@ -43,16 +43,16 @@
       let input = document.getElementById('input').value;
       const usedSlugs = {};
       const headingSlugs = [];
+      const articleIdMatch = input.match(/href="\/hc\/en-us\/articles\/(\d+)\#/i);
+      const currentArticleId = articleIdMatch ? articleIdMatch[1] : null;
 
       // Add anchors inside headings
       const headingRegex = /<(h[1-6])([^>]*)>([\s\S]*?)<\/\1>/gi;
       input = input.replace(headingRegex, (match, tag, attrs, content) => {
-      const textOnly = content
-          .replace(/<[^>]+>/g, '')   // remove tags
-          .replace(/&nbsp;|\s+/gi, '') // remove &nbsp; and whitespace
-          .trim();
-      if (!textOnly) return match; // skip blank or empty headings
+        const textNoHtml = content.replace(/<[^>]+>/g, '').replace(/&nbsp;|\s+/gi, '').trim();
+        if (!textNoHtml) return match;
 
+        const textOnly = content.replace(/<[^>]+>/g, '').trim();
         let baseSlug = textOnly.toLowerCase()
           .replace(/[^\w\s-]/g, '')
           .replace(/\s+/g, '-')
@@ -75,11 +75,7 @@
         return `<${tag}${attrs}>${anchor}${content}</${tag}>`;
       });
 
-      // Extract current article ID from the first matching internal link
-      const articleIdMatch = input.match(/href="\/hc\/en-us\/articles\/(\d+)\#/i);
-      const currentArticleId = articleIdMatch ? articleIdMatch[1] : null;
-
-      // Rewrite internal TOC links
+      // Rewrite internal links with article ID
       const tocLinkRegex = /<a\s+([^>]*?)href="\/hc\/en-us\/articles\/(\d+)#([^"]+)"([^>]*)>([\s\S]*?)<\/a>/gi;
       input = input.replace(tocLinkRegex, (match, pre, articleId, oldAnchor, post, linkText) => {
         const textOnly = linkText.replace(/<[^>]+>/g, '').trim();
@@ -89,11 +85,27 @@
           .replace(/-+/g, '-')
           .replace(/^[-\s]+|[-\s]+$/g, '');
 
-        if (!slug || articleId !== currentArticleId) return match;
-        return `<a ${pre}href="#${slug}"${post}>${linkText}</a>`;
+        if (!slug) return match;
+        return `<a ${pre}href="/hc/en-us/articles/${articleId}#${slug}"${post}>${linkText}</a>`;
       });
 
-      // Rewrite external links with #slug fragments if the slug matches a heading
+      // Rewrite bare # links by prepending the article path
+      const bareHashLinkRegex = /<a\s+([^>]*?)href="#([^"]+)"([^>]*)>([\s\S]*?)<\/a>/gi;
+      if (currentArticleId) {
+        input = input.replace(bareHashLinkRegex, (match, pre, oldAnchor, post, linkText) => {
+          const textOnly = linkText.replace(/<[^>]+>/g, '').trim();
+          let slug = textOnly.toLowerCase()
+            .replace(/[^\w\s-]/g, '')
+            .replace(/\s+/g, '-')
+            .replace(/-+/g, '-')
+            .replace(/^[-\s]+|[-\s]+$/g, '');
+
+          if (!slug) return match;
+          return `<a ${pre}href="/hc/en-us/articles/${currentArticleId}#${slug}"${post}>${linkText}</a>`;
+        });
+      }
+
+      // Rewrite external links with # if matching heading slug
       const externalHashLinkRegex = /<a\s+([^>]*?)href="(https?:\/\/[^"]+)#([^"]+)"([^>]*)>([\s\S]*?)<\/a>/gi;
       input = input.replace(externalHashLinkRegex, (match, pre, baseUrl, hash, post, linkText) => {
         const textOnly = linkText.replace(/<[^>]+>/g, '').trim();
@@ -104,10 +116,9 @@
           .replace(/^[-\s]+|[-\s]+$/g, '');
 
         if (headingSlugs.includes(slug)) {
-          return `<a ${pre}href="#${slug}"${post}>${linkText}</a>`;
-        } else {
-          return match;
+          return `<a ${pre}href="/hc/en-us/articles/${currentArticleId}#${slug}"${post}>${linkText}</a>`;
         }
+        return match;
       });
 
       document.getElementById('output').value = input;
