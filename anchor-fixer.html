@@ -44,19 +44,17 @@
       const usedSlugs = {};
       const headingSlugs = [];
 
-      // Add anchors inside headings (skip if heading contains a link)
+      // Add anchors inside headings
       const headingRegex = /<(h[1-6])([^>]*)>([\s\S]*?)<\/\1>/gi;
       input = input.replace(headingRegex, (match, tag, attrs, content) => {
-        if (/<a\s/i.test(content)) return match; // skip if heading contains a link
+        const textForSlug = content.replace(/<[^>]+>/g, '').trim();
+        if (!textForSlug) return match;
 
-        const textOnly = content.replace(/<[^>]+>/g, '').replace(/&nbsp;|\s+/gi, '').trim();
-        if (!textOnly) return match;
-
-        let baseSlug = textOnly.toLowerCase()
-          .replace(/[^\w\s-]/g, '')
-          .replace(/\s+/g, '-')
+        let baseSlug = textForSlug.toLowerCase()
+          .replace(/[^\w\s-]/g, '')  // remove special characters
+          .replace(/[\s\u00A0]+/g, '-') // replace spaces and nbsp with hyphen
           .replace(/-+/g, '-')
-          .replace(/^[-\s]+|[-\s]+$/g, '');
+          .replace(/^-|-$/g, '');
 
         if (!baseSlug) return match;
 
@@ -78,29 +76,29 @@
       const articleIdMatch = input.match(/href="\/hc\/en-us\/articles\/(\d+)\#/i);
       const currentArticleId = articleIdMatch ? articleIdMatch[1] : null;
 
-      // Rewrite internal TOC links to include article ID and new slug
+      // Rewrite internal TOC links
       const tocLinkRegex = /<a\s+([^>]*?)href="\/hc\/en-us\/articles\/(\d+)#([^"]+)"([^>]*)>([\s\S]*?)<\/a>/gi;
       input = input.replace(tocLinkRegex, (match, pre, articleId, oldAnchor, post, linkText) => {
         const textOnly = linkText.replace(/<[^>]+>/g, '').trim();
         let slug = textOnly.toLowerCase()
           .replace(/[^\w\s-]/g, '')
-          .replace(/\s+/g, '-')
+          .replace(/[\s\u00A0]+/g, '-')
           .replace(/-+/g, '-')
-          .replace(/^[-\s]+|[-\s]+$/g, '');
+          .replace(/^-|-$/g, '');
 
-        if (!slug || articleId !== currentArticleId) return match;
+        if (!slug || (currentArticleId && articleId !== currentArticleId)) return match;
         return `<a ${pre}href="/hc/en-us/articles/${articleId}#${slug}"${post}>${linkText}</a>`;
       });
 
-      // Rewrite external links with hash fragments if they match a heading
+      // Rewrite external links with #slug fragments if the slug matches a heading
       const externalHashLinkRegex = /<a\s+([^>]*?)href="(https?:\/\/[^"]+)#([^"]+)"([^>]*)>([\s\S]*?)<\/a>/gi;
       input = input.replace(externalHashLinkRegex, (match, pre, baseUrl, hash, post, linkText) => {
         const textOnly = linkText.replace(/<[^>]+>/g, '').trim();
         let slug = textOnly.toLowerCase()
           .replace(/[^\w\s-]/g, '')
-          .replace(/\s+/g, '-')
+          .replace(/[\s\u00A0]+/g, '-')
           .replace(/-+/g, '-')
-          .replace(/^[-\s]+|[-\s]+$/g, '');
+          .replace(/^-|-$/g, '');
 
         if (headingSlugs.includes(slug)) {
           return `<a ${pre}href="#${slug}"${post}>${linkText}</a>`;
