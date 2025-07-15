@@ -28,7 +28,7 @@
 </head>
 <body>
   <h1>Zendesk TOC Generator</h1>
-  <p>Paste your article HTML below. This tool adds named anchors to headings, rewrites TOC links, and inserts a flat TOC if missing.</p>
+  <p>Paste your article HTML below. This tool adds named anchors, rewrites internal links, and generates an indented flat TOC.</p>
 
   <label for="input">Original HTML:</label>
   <textarea id="input" placeholder="Paste your Zendesk article HTML here..."></textarea>
@@ -44,12 +44,13 @@
       const headings = [];
       const usedSlugs = new Map();
 
-      function getSlug(text) {
+      function slugify(text) {
         return text.toLowerCase()
-          .replace(/&nbsp;|\s+/gi, '-')
-          .replace(/[^\w-]/g, '')
+          .replace(/&nbsp;/gi, ' ')
+          .replace(/[^\w\s-]/g, '')
+          .replace(/\s+/g, '-')
           .replace(/-+/g, '-')
-          .replace(/^-+|-+$/g, '');
+          .replace(/^-|-$/g, '');
       }
 
       function getUniqueSlug(base) {
@@ -62,13 +63,16 @@
         return slug;
       }
 
-      // Add anchors and collect heading slugs
+      // Step 1: Add anchors and collect heading slugs
       const headingRegex = /<(h[1-6])([^>]*)>([\s\S]*?)<\/\1>/gi;
       input = input.replace(headingRegex, (match, tag, attrs, content) => {
-        const textOnly = content.replace(/<[^>]+>/g, '').replace(/&nbsp;|\s+/gi, ' ').trim();
+        const textOnly = content.replace(/<[^>]+>/g, '').replace(/&nbsp;/gi, '').trim();
         if (!textOnly) return match;
+        if (/<a\s/i.test(content)) return match; // Skip headings with embedded links
 
-        const baseSlug = getSlug(textOnly);
+        const baseSlug = slugify(textOnly);
+        if (!baseSlug) return match;
+
         const slug = getUniqueSlug(baseSlug);
         headings.push({ tag, slug, text: textOnly });
 
@@ -80,28 +84,31 @@
         return `<${tag}${attrs}>${anchor}${content}</${tag}>`;
       });
 
-      // Rewrite internal TOC links with correct slug but keep URL path
+      // Step 2: Rewrite internal TOC links
       const articleIdMatch = input.match(/href="\/hc\/en-us\/articles\/(\d+)#/i);
       const currentArticleId = articleIdMatch ? articleIdMatch[1] : null;
+
       const tocLinkRegex = /<a\s+([^>]*?)href="\/hc\/en-us\/articles\/(\d+)#([^"]+)"([^>]*)>([\s\S]*?)<\/a>/gi;
       input = input.replace(tocLinkRegex, (match, pre, articleId, oldAnchor, post, linkText) => {
-        const textOnly = linkText.replace(/<[^>]+>/g, '').replace(/&nbsp;|\s+/gi, ' ').trim();
-        const slug = getSlug(textOnly);
-        if (!slug) return match;
-
-        if (articleId === currentArticleId) {
-          return `<a ${pre}href="/hc/en-us/articles/${articleId}#${slug}"${post}>${linkText}</a>`;
-        } else {
-          return match;
-        }
+        const textOnly = linkText.replace(/<[^>]+>/g, '').replace(/&nbsp;/gi, '').trim();
+        let slug = slugify(textOnly);
+        if (!slug || articleId !== currentArticleId) return match;
+        return `<a ${pre}href="#${slug}"${post}>${linkText}</a>`;
       });
 
-      // Only insert TOC if it doesn’t already exist
+      // Step 3: Add TOC if not already present
       if (!input.includes('<!-- TOC START -->')) {
-        const tocHtml = headings.map(h => `<p><a href="#${h.slug}">${h.text}</a></p>`).join('\n');
-        const insertAt = input.search(/<h[1-6][^>]*>/i);
-        if (insertAt !== -1) {
-          input = input.slice(0, insertAt) + `\n\n<!-- TOC START -->\n${tocHtml}\n<!-- TOC END -->\n\n` + input.slice(insertAt);
+        const tocHtml = headings.map(h => {
+          const level = parseInt(h.tag.slice(1));
+          const margin = (level - 1) * 20;
+          return `<p style="margin-left: ${margin}px;"><a href="#${h.slug}">${h.text}</a></p>`;
+        }).join('\n');
+
+        const insertMarker = input.search(/<h[1-6][^>]*>/i);
+        if (insertMarker !== -1) {
+          input = input.slice(0, insertMarker)
+            + `\n\n<!-- TOC START -->\n${tocHtml}\n<!-- TOC END -->\n\n`
+            + input.slice(insertMarker);
         } else {
           input = `<!-- TOC START -->\n${tocHtml}\n<!-- TOC END -->\n\n` + input;
         }
