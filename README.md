@@ -48,7 +48,7 @@ They also fix outdated or manually created TOCs by rewriting them with the corre
 
 ### TOC Generator
 - Includes all Anchorfixer functionality.
-- Creates a **flat Table of Contents** based on heading order.
+- Creates a **hierarchical Table of Contents** based on heading tag and order.
 - Uses Zendesk-style TOC formatting:  
   `<p><a href="#slug">Heading Text</a></p>`
 - Skips TOC creation if one already exists (detected by `<!-- TOC START -->`).
