@@ -28,7 +28,7 @@
 </head>
 <body>
   <h1>Zendesk TOC Generator</h1>
-  <p>Paste your article HTML below. This tool adds named anchors to headings and generates a hierarchical TOC with clean links.</p>
+  <p>Paste your article HTML below. This tool adds named anchors and generates a flat TOC with clean, indented links.</p>
 
   <label for="input">Original HTML:</label>
   <textarea id="input" placeholder="Paste your Zendesk article HTML here..."></textarea>
@@ -44,6 +44,15 @@
       const headings = [];
       const usedSlugs = new Map();
 
+      function getSlug(text) {
+        return text.toLowerCase()
+          .replace(/&nbsp;/gi, ' ')
+          .replace(/[^\w\s-]/g, '')
+          .trim()
+          .replace(/\s+/g, '-')
+          .replace(/-+/g, '-');
+      }
+
       function getUniqueSlug(base) {
         let slug = base;
         let count = 1;
@@ -54,61 +63,44 @@
         return slug;
       }
 
-      function slugify(text) {
-        return text.toLowerCase()
-          .replace(/&nbsp;/gi, ' ')
-          .replace(/[^\w\s-]/g, '')
-          .replace(/\s+/g, '-')
-          .replace(/-+/g, '-')
-          .replace(/^[-\s]+|[-\s]+$/g, '');
-      }
-
-      // Step 1: Add anchors and collect heading slugs
       const headingRegex = /<(h[1-6])([^>]*)>([\s\S]*?)<\/\1>/gi;
       input = input.replace(headingRegex, (match, tag, attrs, content) => {
-        const textOnly = content.replace(/<[^>]+>/g, '').replace(/&nbsp;/gi, '').trim();
+        if (/<a\s/i.test(content)) return match;
+
+        const textOnly = content.replace(/<[^>]+>/g, '').trim();
         if (!textOnly) return match;
 
-        const baseSlug = slugify(textOnly);
-        if (!baseSlug) return match;
-
+        const baseSlug = getSlug(textOnly);
         const slug = getUniqueSlug(baseSlug);
         headings.push({ tag, slug, text: textOnly });
 
-        if (content.includes(`name="${slug}"`) || content.includes(`id="${slug}"`)) {
-          return match;
-        }
-
+        if (content.includes(`name="${slug}"`) || content.includes(`id="${slug}"`)) return match;
         const anchor = `<a name="${slug}" id="${slug}"></a>`;
         return `<${tag}${attrs}>${anchor}${content}</${tag}>`;
       });
 
-      // Step 2: Only rewrite same-article TOC links
       const articleIdMatch = input.match(/href="\/hc\/en-us\/articles\/(\d+)\#/i);
       const currentArticleId = articleIdMatch ? articleIdMatch[1] : null;
       const tocLinkRegex = /<a\s+([^>]*?)href="\/hc\/en-us\/articles\/(\d+)#([^"]+)"([^>]*)>([\s\S]*?)<\/a>/gi;
       input = input.replace(tocLinkRegex, (match, pre, articleId, oldAnchor, post, linkText) => {
-        const textOnly = linkText.replace(/<[^>]+>/g, '').replace(/&nbsp;/gi, '').trim();
-        const slug = slugify(textOnly);
+        const textOnly = linkText.replace(/<[^>]+>/g, '').trim();
+        const slug = getSlug(textOnly);
         if (!slug || articleId !== currentArticleId) return match;
         return `<a ${pre}href="#${slug}"${post}>${linkText}</a>`;
       });
 
-      // Step 3: If TOC already exists, do not add another
       if (!input.includes('<!-- TOC START -->')) {
         const tocHtml = headings.map(h => {
-          const level = parseInt(h.tag.charAt(1));
-          const indent = (level - 1) * 20;
-          return `<p style="margin: 0; padding: 0; line-height: 1.2; margin-left: ${indent}px;"><a href="#${h.slug}">${h.text}</a></p>`;
-        }).join('');
+          const indent = (parseInt(h.tag[1]) - 1) * 10;
+          return `<a href="#${h.slug}" style="display: block; margin-left: ${indent}px;">${h.text}</a>`;
+        }).join('\n');
 
-        const insertMarker = input.search(/<h[1-6][^>]*>/i);
-        if (insertMarker !== -1) {
-          input = input.slice(0, insertMarker)
-            + `<!-- TOC START -->${tocHtml}<!-- TOC END -->`
-            + input.slice(insertMarker);
+        const tocBlock = `<!-- TOC START -->\n<p>\n${tocHtml}\n</p>\n<!-- TOC END -->\n\n`;
+        const firstHeading = input.search(/<h[1-6][^>]*>/i);
+        if (firstHeading !== -1) {
+          input = input.slice(0, firstHeading) + tocBlock + input.slice(firstHeading);
         } else {
-          input = `<!-- TOC START -->${tocHtml}<!-- TOC END -->` + input;
+          input = tocBlock + input;
         }
       }
 
