@@ -2,7 +2,7 @@
 
 **Zendesk Anchorfixer** and **TOC Generator** are web-based tools that enhance the HTML of Zendesk Help Center articles by:
 
-- Inserting named anchors directly inside each heading (`<h1>`–`<h4>`) using clean, human-readable slugs.
+- Inserting named anchors directly inside each heading (`<h1>`–`<h4>`) using clean, readable slugs.
 - Updating Table of Contents (TOC) links to use those readable slugs.
 - Preserving Zendesk’s article link structure (`/hc/en-us/articles/{articleID}#slug`) when rewriting links.
 
