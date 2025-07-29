@@ -81,8 +81,10 @@ They also fix outdated or manually created TOCs by rewriting them with the corre
 
 ```html
 <!-- TOC START -->
-<p><a href="#create-a-list">Create a List</a></p>
-<p><a href="#manage-your-list">Manage Your List</a></p>
+<p>
+  <a href="#create-a-list" style="display: block; margin-left: 0px;">Create a List</a>
+  <a href="#manage-your-list" style="display: block; margin-left: 10px;">Manage Your List</a>
+</p>
 <!-- TOC END -->
 ```
 
