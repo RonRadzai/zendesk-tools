@@ -92,9 +92,8 @@
       if (!input.includes('<!-- TOC START -->')) {
         const tocHtml = headings.map(h => {
           const indent = (parseInt(h.tag[1]) - 1) * 10;
-          return `  <a href="#${h.slug}" style="display: block; margin-left: ${indent}px;">${h.text}</a>`;
-        }).join('\n');
-
+          return `<a href="#${h.slug}" style="display: block; margin-left: ${indent}px;">${h.text}</a><br>`;
+}).join('\n');
         const tocBlock = `<!-- TOC START -->\n<p>\n${tocHtml}\n</p>\n<!-- TOC END -->\n\n`;
         const firstHeading = input.search(/<h[1-6][^>]*>/i);
         if (firstHeading !== -1) {
