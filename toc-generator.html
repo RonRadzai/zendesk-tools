@@ -50,7 +50,8 @@
           .replace(/[^\w\s-]/g, '')
           .trim()
           .replace(/\s+/g, '-')
-          .replace(/-+/g, '-');
+          .replace(/-+/g, '-')
+          .replace(/^-|-$/g, '');
       }
 
       function getUniqueSlug(base) {
@@ -65,8 +66,6 @@
 
       const headingRegex = /<(h[1-6])([^>]*)>([\s\S]*?)<\/\1>/gi;
       input = input.replace(headingRegex, (match, tag, attrs, content) => {
-        if (/<a\s/i.test(content)) return match;
-
         const textOnly = content.replace(/<[^>]+>/g, '').trim();
         if (!textOnly) return match;
 
@@ -74,20 +73,29 @@
         const slug = getUniqueSlug(baseSlug);
         headings.push({ tag, slug, text: textOnly });
 
-        if (content.includes(`name="${slug}"`) || content.includes(`id="${slug}"`)) return match;
-        const anchor = `<a name="${slug}" id="${slug}"></a>`;
-        return `<${tag}${attrs}>${anchor}${content}</${tag}>`;
+        const fixedAnchor = `<a name="${slug}" id="${slug}"></a>`;
+
+        const legacyAnchorRegex = /<a\s+(name|id)="([^"]+)"\s+(name|id)="([^"]+)"\s*><\/a>/i;
+        let updatedContent = content;
+        if (legacyAnchorRegex.test(content)) {
+          updatedContent = content.replace(legacyAnchorRegex, fixedAnchor);
+        } else if (!/<a\s/i.test(content)) {
+          updatedContent = fixedAnchor + content;
+        }
+
+        return `<${tag}${attrs}>${updatedContent}</${tag}>`;
       });
 
       const articleIdMatch = input.match(/href="\/hc\/en-us\/articles\/(\d+)\#/i);
       const currentArticleId = articleIdMatch ? articleIdMatch[1] : null;
-      const tocLinkRegex = /<a\s+([^>]*?)href="\/hc\/en-us\/articles\/(\d+)#([^"]+)"([^>]*)>([\s\S]*?)<\/a>/gi;
-      input = input.replace(tocLinkRegex, (match, pre, articleId, oldAnchor, post, linkText) => {
-        const textOnly = linkText.replace(/<[^>]+>/g, '').trim();
-        const slug = getSlug(textOnly);
-        if (!slug || articleId !== currentArticleId) return match;
-        return `<a ${pre}href="#${slug}"${post}>${linkText}</a>`;
-      });
+
+      input = input.replace(/<a\s+([^>]*?)href="\/hc\/en-us\/articles\/(\d+)#([^"]+)"([^>]*)>([\s\S]*?)<\/a>/gi,
+        (match, pre, articleId, oldAnchor, post, linkText) => {
+          const textOnly = linkText.replace(/<[^>]+>/g, '').trim();
+          const slug = getSlug(textOnly);
+          if (!slug || articleId !== currentArticleId) return match;
+          return `<a ${pre}href="#${slug}"${post}>${linkText}</a>`;
+        });
 
       if (!input.includes('<!-- TOC START -->')) {
         const tocHtml = headings.map(h => {
