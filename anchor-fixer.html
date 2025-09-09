@@ -30,6 +30,7 @@
         .replace(/<[^>]+>/g, '')
         .replace(/[^\w\s-]/g, '')
         .toLowerCase()
+        .trim()
         .replace(/\s+/g, '-')
         .replace(/-+/g, '-')
         .replace(/^-|-$/g, '');
@@ -41,28 +42,35 @@
       const headingSlugs = [];
 
       input = input.replace(/<(h[1-6])([^>]*)>([\s\S]*?)<\/\1>/gi, (match, tag, attrs, content) => {
-        if (/<a\s/i.test(content)) return match;
-        const slug = slugify(content);
-        if (!slug) return match;
+        const contentText = content.replace(/<[^>]+>/g, '').trim();
+        if (!contentText) return match;
 
-        let uniqueSlug = slug;
+        let baseSlug = slugify(contentText);
+        let uniqueSlug = baseSlug;
         let counter = 2;
         while (usedSlugs[uniqueSlug]) {
-          uniqueSlug = `${slug}-${counter++}`;
+          uniqueSlug = `${baseSlug}-${counter++}`;
         }
         usedSlugs[uniqueSlug] = true;
         headingSlugs.push(uniqueSlug);
 
-        // Clean old id/name and add correct ones
-        let fixedAttrs = attrs
-          .replace(/\s(id|name)="[^"]*"/gi, '') // remove old ones
-          .trim();
-        fixedAttrs += ` id="${uniqueSlug}" name="${uniqueSlug}"`;
+        // If anchor already present but incorrectly formatted
+        const fixedAnchor = `<a name="${uniqueSlug}" id="${uniqueSlug}"></a>`;
 
-        const anchor = `<a name="${uniqueSlug}" id="${uniqueSlug}"></a>`;
-        return `<${tag} ${fixedAttrs}>${anchor}${content}</${tag}>`;
+        // Replace legacy anchor if present
+        let updatedContent = content;
+        const legacyAnchorRegex = /<a\s+(name|id)="([^"]+)"\s+(name|id)="([^"]+)"\s*><\/a>/i;
+        if (legacyAnchorRegex.test(content)) {
+          updatedContent = content.replace(legacyAnchorRegex, fixedAnchor);
+        } else if (!/<a\s/i.test(content)) {
+          // Add new anchor only if one doesn't exist
+          updatedContent = fixedAnchor + content;
+        }
+
+        return `<${tag}${attrs}>${updatedContent}</${tag}>`;
       });
 
+      // Rewrite same-article TOC links
       const articleIdMatch = input.match(/href="\/hc\/en-us\/articles\/(\d+)\#/i);
       const currentArticleId = articleIdMatch ? articleIdMatch[1] : null;
 
@@ -71,9 +79,10 @@
           if (articleId !== currentArticleId) return match;
           const slug = slugify(linkText);
           if (!slug) return match;
-          return `<a ${pre}href="/hc/en-us/articles/${articleId}#${slug}"${post}>${linkText}</a>`;
+          return `<a ${pre}href="#${slug}"${post}>${linkText}</a>`;
         });
 
+      // Rewrite local fragment links with slugs
       input = input.replace(/<a\s+([^>]*?)href="(https?:\/\/[^"]+)#([^"]+)"([^>]*)>([\s\S]*?)<\/a>/gi,
         (match, pre, baseUrl, hash, post, linkText) => {
           const slug = slugify(linkText);
