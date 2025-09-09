@@ -50,8 +50,7 @@
           .replace(/[^\w\s-]/g, '')
           .trim()
           .replace(/\s+/g, '-')
-          .replace(/-+/g, '-')
-          .replace(/^-|-$/g, '');
+          .replace(/-+/g, '-');
       }
 
       function getUniqueSlug(base) {
@@ -73,37 +72,44 @@
         const slug = getUniqueSlug(baseSlug);
         headings.push({ tag, slug, text: textOnly });
 
-        const fixedAnchor = `<a name="${slug}" id="${slug}"></a>`;
+        // Remove any legacy bad anchors like name="General_Settings"
+        content = content.replace(/<a\s+(name|id)="[^"]*"\s*><\/a>/gi, '');
 
-        const legacyAnchorRegex = /<a\s+(name|id)="([^"]+)"\s+(name|id)="([^"]+)"\s*><\/a>/i;
-        let updatedContent = content;
-        if (legacyAnchorRegex.test(content)) {
-          updatedContent = content.replace(legacyAnchorRegex, fixedAnchor);
-        } else if (!/<a\s/i.test(content)) {
-          updatedContent = fixedAnchor + content;
-        }
+        // Skip headings that already contain actual <a href=...> links
+        if (/<a\s+(?!name|id)/i.test(content)) return match;
 
-        return `<${tag}${attrs}>${updatedContent}</${tag}>`;
+        // Insert corrected anchor
+        const anchor = `<a name="${slug}" id="${slug}"></a>`;
+        return `<${tag}${attrs}>${anchor}${content}</${tag}>`;
       });
 
       const articleIdMatch = input.match(/href="\/hc\/en-us\/articles\/(\d+)\#/i);
       const currentArticleId = articleIdMatch ? articleIdMatch[1] : null;
+      const tocLinkRegex = /<a\s+([^>]*?)href="\/hc\/en-us\/articles\/(\d+)#([^"]+)"([^>]*)>([\s\S]*?)<\/a>/gi;
+      input = input.replace(tocLinkRegex, (match, pre, articleId, oldAnchor, post, linkText) => {
+        const textOnly = linkText.replace(/<[^>]+>/g, '').trim();
+        const slug = getSlug(textOnly);
+        if (!slug || articleId !== currentArticleId) return match;
+        return `<a ${pre}href="#${slug}"${post}>${linkText}</a>`;
+      });
 
-      input = input.replace(/<a\s+([^>]*?)href="\/hc\/en-us\/articles\/(\d+)#([^"]+)"([^>]*)>([\s\S]*?)<\/a>/gi,
-        (match, pre, articleId, oldAnchor, post, linkText) => {
+      // Rewrite naked internal <a href="#..." with text
+      input = input.replace(/<a\s+([^>]*?)href="#([^"]+)"([^>]*)>([\s\S]*?)<\/a>/gi,
+        (match, pre, oldAnchor, post, linkText) => {
           const textOnly = linkText.replace(/<[^>]+>/g, '').trim();
           const slug = getSlug(textOnly);
-          if (!slug || articleId !== currentArticleId) return match;
+          if (!slug) return match;
           return `<a ${pre}href="#${slug}"${post}>${linkText}</a>`;
         });
 
+      // TOC injection
       if (!input.includes('<!-- TOC START -->')) {
         const tocHtml = headings.map(h => {
           const indent = (parseInt(h.tag[1]) - 1) * 10;
-          return `    <a href="#${h.slug}" style="display: block; margin-left: ${indent}px;">${h.text}</a>`;
+          return `  <a href="#${h.slug}" style="display: block; margin-left: ${indent}px;">${h.text}</a>`;
         });
 
-        const tocBlock = `<!-- TOC START -->\n<p>\n${tocHtml.join('\n')}\n</p>\n<!-- TOC END -->\n\n`;
+        const tocBlock = `<!-- TOC START -->\n<div id="zwTOCDiv">\n${tocHtml.join('\n')}\n</div>\n<!-- TOC END -->\n\n`;
         const firstHeading = input.search(/<h[1-6][^>]*>/i);
         if (firstHeading !== -1) {
           input = input.slice(0, firstHeading) + tocBlock + input.slice(firstHeading);
