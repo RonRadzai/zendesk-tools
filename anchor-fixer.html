@@ -53,10 +53,14 @@
         usedSlugs[uniqueSlug] = true;
         headingSlugs.push(uniqueSlug);
 
-        if (content.includes(`name="${uniqueSlug}"`) || content.includes(`id="${uniqueSlug}"`)) return match;
+        // Clean old id/name and add correct ones
+        let fixedAttrs = attrs
+          .replace(/\s(id|name)="[^"]*"/gi, '') // remove old ones
+          .trim();
+        fixedAttrs += ` id="${uniqueSlug}" name="${uniqueSlug}"`;
 
         const anchor = `<a name="${uniqueSlug}" id="${uniqueSlug}"></a>`;
-        return `<${tag}${attrs}>${anchor}${content}</${tag}>`;
+        return `<${tag} ${fixedAttrs}>${anchor}${content}</${tag}>`;
       });
 
       const articleIdMatch = input.match(/href="\/hc\/en-us\/articles\/(\d+)\#/i);
